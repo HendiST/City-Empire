@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>POS PRO</title>
+<title>POS PRO SUPABASE</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{
 margin:0;
@@ -10,7 +11,7 @@ font-family:Segoe UI;
 background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
 color:white;
 }
-.login-container{
+.login{
 height:100vh;
 display:flex;
 justify-content:center;
@@ -52,7 +53,7 @@ padding:20px;
 
 <body>
 
-<div class="login-container" id="loginPage">
+<div class="login" id="loginPage">
 <div class="card">
 <h2>Login POS</h2>
 <input id="username" placeholder="Username">
@@ -64,112 +65,89 @@ padding:20px;
 <div id="app" class="hidden">
 <div class="sidebar">
 <h3>POS PRO</h3>
-<p id="userInfo"></p>
-<button onclick="showSection('dashboard')">Dashboard</button>
-<button onclick="showSection('products')">Produk</button>
-<button onclick="showSection('users')">Users</button>
+<p id="info"></p>
+<button onclick="show('dashboard')">Dashboard</button>
+<button onclick="show('products')">Produk</button>
 <button onclick="logout()">Logout</button>
 </div>
 
 <div class="content">
 <div id="dashboard">
 <h2>Dashboard</h2>
-<p>Saldo: Rp <span id="saldo"></span></p>
+Saldo: Rp <span id="saldo"></span>
 </div>
 
 <div id="products" class="hidden">
 <h2>Produk</h2>
-<div id="productList"></div>
+<div id="listProduk"></div>
 <input id="pname" placeholder="Nama Produk">
 <input id="pprice" type="number" placeholder="Harga">
-<button onclick="addProduct()">Tambah Produk</button>
+<button onclick="addProduk()">Tambah Produk</button>
 </div>
-
-<div id="users" class="hidden">
-<h2>Daftar User (Owner Only)</h2>
-<div id="userList"></div>
-</div>
-
 </div>
 </div>
 
 <script>
-const API="ISI_URL_RAILWAY_KAMU";
+const supabase = window.supabase.createClient(
+"https://jigcdhjjrvbzibyxsraz.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppZ2NkaGpqcnZiemlieXhzcmF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NDYxNjEsImV4cCI6MjA4NzQyMjE2MX0.KhohNnjt0V2rXhbD-rGQTXUMDC3P8Z9Qj84ZTPjXGpE"
+);
 
-let token="";
-let role="";
+let currentUser=null;
 
-function login(){
-fetch(API+"/login",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-username:username.value,
-password:password.value
-})
-})
-.then(res=>res.json())
-.then(data=>{
-if(data.token){
-token=data.token;
+async function login(){
+let {data,error}=await supabase
+.from("users")
+.select("*")
+.eq("username",username.value)
+.eq("password",password.value)
+.single();
+
+if(error || !data){
+alert("Login gagal");
+return;
+}
+
+currentUser=data;
 loginPage.classList.add("hidden");
 app.classList.remove("hidden");
-loadUser();
-}else alert(data);
-});
+
+info.innerText=data.username+" ("+data.role+")";
+saldo.innerText=data.saldo;
+
+loadProduk();
 }
 
-function loadUser(){
-const payload=JSON.parse(atob(token.split(".")[1]));
-role=payload.role;
-userInfo.innerText="User: "+payload.username+" ("+role+")";
-loadProducts();
-if(role==="owner") loadUsers();
-}
-
-function loadProducts(){
-fetch(API+"/products",{headers:{Authorization:token}})
-.then(res=>res.json())
-.then(data=>{
-productList.innerHTML="";
+async function loadProduk(){
+let {data}=await supabase.from("products").select("*");
+listProduk.innerHTML="";
 data.forEach(p=>{
-productList.innerHTML+=p.name+" - Rp "+p.price+"<br>";
-});
+listProduk.innerHTML+=p.name+" - Rp "+p.price+"<br>";
 });
 }
 
-function addProduct(){
-fetch(API+"/products",{
-method:"POST",
-headers:{
-"Content-Type":"application/json",
-Authorization:token
-},
-body:JSON.stringify({
+async function addProduk(){
+if(currentUser.role==="user"){
+alert("User tidak bisa tambah produk");
+return;
+}
+
+await supabase.from("products").insert({
 name:pname.value,
 price:pprice.value
-})
-})
-.then(()=>loadProducts());
+});
+
+loadProduk();
 }
 
-function loadUsers(){
-fetch(API+"/users",{headers:{Authorization:token}})
-.then(res=>res.json())
-.then(data=>{
-userList.innerHTML="";
-data.forEach(u=>{
-userList.innerHTML+=u.username+" - "+u.role+" - Saldo: "+u.saldo+"<br>";
-});
-});
-}
-
-function showSection(sec){
+function show(id){
 document.querySelectorAll(".content > div").forEach(d=>d.classList.add("hidden"));
-document.getElementById(sec).classList.remove("hidden");
+document.getElementById(id).classList.remove("hidden");
 }
 
-function logout(){location.reload();}
+function logout(){
+location.reload();
+}
 </script>
 
 </body>
