@@ -96,6 +96,7 @@ const supabase = window.supabase.createClient(
 let currentUser=null;
 
 async function login(){
+try{
 let {data,error}=await supabase
 .from("users")
 .select("*")
@@ -103,10 +104,22 @@ let {data,error}=await supabase
 .eq("password",password.value)
 .single();
 
-if(error || !data){
-alert("Login gagal");
+if(error){
+alert("Error: "+error.message);
 return;
 }
+
+if(!data){
+alert("User tidak ditemukan");
+return;
+}
+
+currentUser=data;
+loginPage.classList.add("hidden");
+app.classList.remove("hidden");
+
+info.innerText=data.username+" ("+data.role+")";
+saldo.innerText
 
 currentUser=data;
 loginPage.classList.add("hidden");
