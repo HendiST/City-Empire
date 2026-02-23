@@ -147,12 +147,15 @@ const supabase = window.supabase.createClient(
 let currentUser=null;
 
 async function login(){
-try{
+async function login(){
+alert("Login ditekan");
 
 let usernameInput=document.getElementById("username").value;
 let passwordInput=document.getElementById("password").value;
 
-let {data,error}=await supabase
+alert("Username: "+usernameInput);
+
+}let {data,error}=await supabase
 .from("users")
 .select("*")
 .eq("username",usernameInput)
