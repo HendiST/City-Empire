@@ -2,7 +2,6 @@ const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(cors());
@@ -16,25 +15,53 @@ const db = mysql.createConnection({
   port: process.env.MYSQLPORT
 });
 
-db.connect(err=>{
+db.connect(async (err)=>{
   if(err) console.log(err);
-  else console.log("MySQL Connected");
+  else {
+    console.log("MySQL Connected");
+
+    // AUTO CREATE TABLES
+    db.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(100) UNIQUE,
+        password VARCHAR(255),
+        role VARCHAR(20),
+        saldo INT DEFAULT 0
+      )
+    `);
+
+    db.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100),
+        price INT
+      )
+    `);
+
+    // INSERT DEFAULT USERS
+    const hash = await bcrypt.hash("1234",10);
+
+    db.query("INSERT IGNORE INTO users (username,password,role,saldo) VALUES (?,?,?,?)",
+      ["owner",hash,"owner",1000000]);
+
+    db.query("INSERT IGNORE INTO users (username,password,role,saldo) VALUES (?,?,?,?)",
+      ["kasir",hash,"kasir",500000]);
+
+    db.query("INSERT IGNORE INTO users (username,password,role,saldo) VALUES (?,?,?,?)",
+      ["user",hash,"user",100000]);
+
+    console.log("Tables Ready & Default Users Created");
+  }
 });
 
-const SECRET = "POS_SECRET_KEY";
-
-function verifyToken(req,res,next){
-  const token = req.headers.authorization;
-  if(!token) return res.status(401).json("Unauthorized");
-  jwt.verify(token, SECRET,(err,decoded)=>{
-    if(err) return res.status(403).json("Invalid token");
-    req.user = decoded;
-    next();
-  });
-}
-
 app.get("/", (req,res)=>{
-  res.send("POS Backend Running");
+  res.send("POS Backend Running & Database Ready");
+});
+
+app.listen(process.env.PORT || 3000, ()=>{
+  console.log("Server running");
+});  res.send("POS Backend Running");
 });
 
 app.post("/login", async (req,res)=>{
