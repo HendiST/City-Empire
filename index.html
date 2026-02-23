@@ -2,210 +2,174 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>POS Pro Blue</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+<title>POS PRO</title>
 <style>
 body{
-  margin:0;
-  font-family: 'Segoe UI';
-  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  color:white;
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
 }
-.box{
-  background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(12px);
-  padding:20px;
-  margin:20px;
-  border-radius:15px;
-  box-shadow:0 0 20px rgba(0,0,0,0.4);
+.login-container{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+.card{
+background:rgba(255,255,255,0.08);
+padding:40px;
+border-radius:15px;
+backdrop-filter:blur(12px);
+width:350px;
 }
 input,button{
-  padding:8px;
-  margin:5px;
-  border-radius:8px;
-  border:none;
+width:100%;
+padding:10px;
+margin:10px 0;
+border:none;
+border-radius:8px;
 }
 button{
-  background:#2196f3;
-  color:white;
-  cursor:pointer;
+background:#2196f3;
+color:white;
+cursor:pointer;
 }
-button:hover{
-  background:#0d8bf2;
+.sidebar{
+width:200px;
+background:rgba(0,0,0,0.4);
+height:100vh;
+position:fixed;
+padding:20px;
 }
-.flex{display:flex;gap:20px;flex-wrap:wrap;}
+.content{
+margin-left:220px;
+padding:20px;
+}
+.hidden{display:none;}
 </style>
 </head>
 
 <body>
 
-<div id="loginBox" class="box">
-<h2>🔐 Login Kasir</h2>
+<div class="login-container" id="loginPage">
+<div class="card">
+<h2>Login POS</h2>
 <input id="username" placeholder="Username">
 <input id="password" type="password" placeholder="Password">
-<br>
 <button onclick="login()">Login</button>
 </div>
+</div>
 
-<div id="app" style="display:none;">
-
-<div class="box">
-<h2>💳 POS Modern</h2>
-Kasir: <span id="kasir"></span> |
-Saldo: Rp <span id="saldo"></span>
+<div id="app" class="hidden">
+<div class="sidebar">
+<h3>POS PRO</h3>
+<p id="userInfo"></p>
+<button onclick="showSection('dashboard')">Dashboard</button>
+<button onclick="showSection('products')">Produk</button>
+<button onclick="showSection('users')">Users</button>
 <button onclick="logout()">Logout</button>
 </div>
 
-<div class="flex">
-
-<div class="box" style="flex:1">
-<h3>📦 Produk</h3>
-<input id="namaP" placeholder="Nama">
-<input id="hargaP" type="number" placeholder="Harga">
-<button onclick="addProduct()">Tambah</button>
-<div id="produkList"></div>
+<div class="content">
+<div id="dashboard">
+<h2>Dashboard</h2>
+<p>Saldo: Rp <span id="saldo"></span></p>
 </div>
 
-<div class="box" style="flex:1">
-<h3>🛒 Keranjang</h3>
-<div id="cart"></div>
-<h3>Total: Rp <span id="total">0</span></h3>
-<input id="bayar" type="number" placeholder="Bayar">
-<button onclick="bayarTransaksi()">Bayar</button>
-<h3>Kembalian: Rp <span id="kembali">0</span></h3>
-<button onclick="resetCart()">Reset</button>
+<div id="products" class="hidden">
+<h2>Produk</h2>
+<div id="productList"></div>
+<input id="pname" placeholder="Nama Produk">
+<input id="pprice" type="number" placeholder="Harga">
+<button onclick="addProduct()">Tambah Produk</button>
 </div>
 
-<div class="box" style="flex:1">
-<h3>📊 Laporan</h3>
-<h2>Rp <span id="laporan"></span></h2>
-<button onclick="exportExcel()">Export Excel</button>
-
-<h3>💳 Transfer Saldo</h3>
-<input id="tujuan" placeholder="Username Tujuan">
-<input id="jumlahTf" type="number" placeholder="Jumlah">
-<button onclick="transfer()">Transfer</button>
+<div id="users" class="hidden">
+<h2>Daftar User (Owner Only)</h2>
+<div id="userList"></div>
 </div>
 
 </div>
 </div>
 
 <script>
-let users = JSON.parse(localStorage.getItem("users")) || [
-  {username:"admin",password:"1234",saldo:100000}
-];
-let produk = JSON.parse(localStorage.getItem("produk")) || [];
-let transaksi = JSON.parse(localStorage.getItem("transaksi")) || [];
-let cart=[];
-let total=0;
-let currentUser=null;
+const API="ISI_URL_RAILWAY_KAMU";
 
-function saveAll(){
-  localStorage.setItem("users",JSON.stringify(users));
-  localStorage.setItem("produk",JSON.stringify(produk));
-  localStorage.setItem("transaksi",JSON.stringify(transaksi));
-}
+let token="";
+let role="";
 
 function login(){
-  let u=username.value;
-  let p=password.value;
-  let user=users.find(x=>x.username===u && x.password===p);
-  if(!user) return alert("Login gagal");
-  currentUser=user;
-  loginBox.style.display="none";
-  app.style.display="block";
-  kasir.innerText=user.username;
-  updateUI();
+fetch(API+"/login",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+username:username.value,
+password:password.value
+})
+})
+.then(res=>res.json())
+.then(data=>{
+if(data.token){
+token=data.token;
+loginPage.classList.add("hidden");
+app.classList.remove("hidden");
+loadUser();
+}else alert(data);
+});
 }
 
-function logout(){
-  location.reload();
+function loadUser(){
+const payload=JSON.parse(atob(token.split(".")[1]));
+role=payload.role;
+userInfo.innerText="User: "+payload.username+" ("+role+")";
+loadProducts();
+if(role==="owner") loadUsers();
 }
 
-function updateUI(){
-  saldo.innerText=currentUser.saldo;
-  laporan.innerText=transaksi.reduce((a,b)=>a+b.total,0);
-  renderProduk();
-  renderCart();
+function loadProducts(){
+fetch(API+"/products",{headers:{Authorization:token}})
+.then(res=>res.json())
+.then(data=>{
+productList.innerHTML="";
+data.forEach(p=>{
+productList.innerHTML+=p.name+" - Rp "+p.price+"<br>";
+});
+});
 }
 
 function addProduct(){
-  let nama=namaP.value;
-  let harga=parseInt(hargaP.value);
-  if(!nama||!harga) return;
-  produk.push({nama,harga});
-  saveAll();
-  renderProduk();
+fetch(API+"/products",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+Authorization:token
+},
+body:JSON.stringify({
+name:pname.value,
+price:pprice.value
+})
+})
+.then(()=>loadProducts());
 }
 
-function renderProduk(){
-  produkList.innerHTML="";
-  produk.forEach((p,i)=>{
-    let btn=document.createElement("button");
-    btn.innerText=p.nama+" - "+p.harga;
-    btn.onclick=()=>addToCart(i);
-    produkList.appendChild(btn);
-  });
+function loadUsers(){
+fetch(API+"/users",{headers:{Authorization:token}})
+.then(res=>res.json())
+.then(data=>{
+userList.innerHTML="";
+data.forEach(u=>{
+userList.innerHTML+=u.username+" - "+u.role+" - Saldo: "+u.saldo+"<br>";
+});
+});
 }
 
-function addToCart(i){
-  cart.push(produk[i]);
-  total+=produk[i].harga;
-  renderCart();
+function showSection(sec){
+document.querySelectorAll(".content > div").forEach(d=>d.classList.add("hidden"));
+document.getElementById(sec).classList.remove("hidden");
 }
 
-function renderCart(){
-  cart.innerHTML="";
-  cartDiv=document.getElementById("cart");
-  cartDiv.innerHTML="";
-  cart.forEach(p=>{
-    cartDiv.innerHTML+=p.nama+" - "+p.harga+"<br>";
-  });
-  totalEl=document.getElementById("total");
-  totalEl.innerText=total;
-}
-
-function bayarTransaksi(){
-  let uang=parseInt(bayar.value);
-  if(uang<total) return alert("Uang kurang");
-  let kembali=uang-total;
-  kembaliEl=document.getElementById("kembali");
-  kembaliEl.innerText=kembali;
-
-  currentUser.saldo+=total;
-  transaksi.push({user:currentUser.username,total});
-  total=0;
-  cart=[];
-  saveAll();
-  updateUI();
-}
-
-function resetCart(){
-  cart=[];
-  total=0;
-  renderCart();
-}
-
-function transfer(){
-  let tujuanUser=users.find(x=>x.username===tujuan.value);
-  let jumlah=parseInt(jumlahTf.value);
-  if(!tujuanUser) return alert("User tidak ada");
-  if(currentUser.saldo<jumlah) return alert("Saldo kurang");
-  currentUser.saldo-=jumlah;
-  tujuanUser.saldo+=jumlah;
-  saveAll();
-  updateUI();
-  alert("Transfer berhasil");
-}
-
-function exportExcel(){
-  let ws=XLSX.utils.json_to_sheet(transaksi);
-  let wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,"Laporan");
-  XLSX.writeFile(wb,"laporan.xlsx");
-}
+function logout(){location.reload();}
 </script>
 
 </body>
